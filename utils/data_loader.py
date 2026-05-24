@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 import os
+import requests
 
 TEAM_NAME_MAP = {
     'Delhi Daredevils': 'Delhi Capitals',
@@ -16,6 +17,34 @@ VALID_SEASONS = [
     '2021', '2022', '2023', '2024', '2025'
 ]
 
+def download_from_gdrive(file_id, dest_path):
+    session = requests.Session()
+    url = "https://drive.google.com/uc?export=download"
+    
+    # First request to get confirmation token
+    response = session.get(url, params={"id": file_id}, stream=True)
+    
+    # Find confirmation token
+    token = None
+    for key, value in response.cookies.items():
+        if key.startswith("download_warning"):
+            token = value
+    
+    # If token found, use it; otherwise try new Google Drive format
+    if token:
+        response = session.get(url, params={"id": file_id, "confirm": token}, stream=True)
+    else:
+        # Try newer Google Drive download format
+        response = session.get(
+            f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t",
+            stream=True
+        )
+
+    with open(dest_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=32768):
+            if chunk:
+                f.write(chunk)
+
 @st.cache_data
 def load_data():
     local_path = 'data/IPL.csv'
@@ -23,29 +52,7 @@ def load_data():
     if not os.path.exists(local_path):
         os.makedirs('data', exist_ok=True)
         file_id = "1y8mb8_Mb_3X5iB6ds1X_fjZb1RSql0K0"
-
-        # Handle large file virus scan warning from Google Drive
-        import requests
-        session = requests.Session()
-        url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        response = session.get(url, stream=True)
-
-        # Get confirmation token for large files
-        token = None
-        for key, value in response.cookies.items():
-            if key.startswith('download_warning'):
-                token = value
-                break
-
-        if token:
-            url = f"https://drive.google.com/uc?export=download&confirm={token}&id={file_id}"
-            response = session.get(url, stream=True)
-
-        # Write file
-        with open(local_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=32768):
-                if chunk:
-                    f.write(chunk)
+        download_from_gdrive(file_id, local_path)
 
     df = pd.read_csv(local_path, low_memory=False)
 
