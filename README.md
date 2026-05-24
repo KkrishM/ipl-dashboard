@@ -5,7 +5,7 @@ An interactive, multi-page web application built with **Python** and **Streamlit
 ---
 
 ##  Live Demo
-> Coming soon — deploying on Streamlit Cloud
+> 👉 [Live Demo](https://your-app-url.streamlit.app)
 
 ---
 
