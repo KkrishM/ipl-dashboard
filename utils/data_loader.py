@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import os
 
 TEAM_NAME_MAP = {
     'Delhi Daredevils': 'Delhi Capitals',
@@ -17,14 +18,41 @@ VALID_SEASONS = [
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv('data/IPL.csv', low_memory=False)
+    local_path = 'data/IPL.csv'
 
-    # Fix team names
+    if not os.path.exists(local_path):
+        os.makedirs('data', exist_ok=True)
+        file_id = "1y8mb8_Mb_3X5iB6ds1X_fjZb1RSql0K0"
+
+        # Handle large file virus scan warning from Google Drive
+        import requests
+        session = requests.Session()
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        response = session.get(url, stream=True)
+
+        # Get confirmation token for large files
+        token = None
+        for key, value in response.cookies.items():
+            if key.startswith('download_warning'):
+                token = value
+                break
+
+        if token:
+            url = f"https://drive.google.com/uc?export=download&confirm={token}&id={file_id}"
+            response = session.get(url, stream=True)
+
+        # Write file
+        with open(local_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=32768):
+                if chunk:
+                    f.write(chunk)
+
+    df = pd.read_csv(local_path, low_memory=False)
+
     for col in ['batting_team', 'bowling_team', 'toss_winner', 'match_won_by']:
         if col in df.columns:
             df[col] = df[col].replace(TEAM_NAME_MAP)
 
-    # Fix season column & remove bad data
     df['season'] = df['season'].astype(str)
     df = df[df['season'].isin(VALID_SEASONS)]
 
@@ -43,7 +71,6 @@ def get_team_matches(df, team):
     return df[(df['batting_team'] == team) | (df['bowling_team'] == team)]
 
 def get_match_results(df):
-    # One row per match
     return df.drop_duplicates(subset='match_id')[
         ['match_id', 'date', 'season', 'batting_team', 'bowling_team',
          'toss_winner', 'toss_decision', 'match_won_by', 'win_outcome',
