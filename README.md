@@ -5,7 +5,7 @@ An interactive, multi-page web application built with **Python** and **Streamlit
 ---
 
 ##  Live Demo
-> 👉 [Live Demo](https://your-app-url.streamlit.app)
+> 👉 [Live Demo](https://ipldashboardd.streamlit.app/)
 
 ---
 
